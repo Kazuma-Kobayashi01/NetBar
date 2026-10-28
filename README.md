@@ -12,7 +12,7 @@
 - **手机热点标记**：在“当前连接”里打开“这是手机热点”，或在附近网络上右键标记。
   也可以自动识别：网关是 172.20.10.1（iPhone）或 192.168.43.1（常见安卓），或网络名包含 iPhone / Galaxy / Redmi / HUAWEI 等关键词。手动标记优先于自动识别。
 - **详细信息**：SSID、BSSID、RSSI / 噪声 / SNR、信道 / 频段 / 带宽、Wi-Fi 协议、协商速率、安全性、IPv4 / IPv6、子网掩码、路由器、DNS、MAC、MTU、实时速率、累计流量。点击任一行即可拷贝。
-- **连接 Wi-Fi**：扫描附近网络，点击即可连接（已保存的网络无需密码），也可以打开 / 关闭 Wi-Fi、断开连接。
+- **连接 Wi-Fi**：扫描附近网络，点击即可连接。需要密码时会弹出和系统一样的“加入网络”对话框（可显示密码；企业级网络如 eduroam 会额外要求用户名），在弹窗里等待连接结果，失败时可以直接重试。已保存的网络优先使用钥匙串里的密码。也可以打开 / 关闭 Wi-Fi、断开连接。
 - **多网卡显示**：Wi-Fi、USB / 雷雳网卡、网桥，以及代理软件的 `utun`（Clash、Surge 等的 TUN 模式），并标出“默认路由”和“物理链路”。只有链路本地地址的系统 utun 默认隐藏。
 - **设置窗口**（面板右下角齿轮，或 ⌘,）：
   - 通用：界面语言、开机启动、刷新间隔、显示所有接口、定位权限状态，以及跳转到系统设置
@@ -35,10 +35,15 @@
 
 打开系统设置 → 控制中心 → Wi-Fi → “不在菜单栏中显示”。也可以在 NetBar 的齿轮菜单里选“隐藏系统自带 Wi-Fi 图标…”直接跳转到这个页面。
 
+## 应用图标
+
+`Resources/AppIcon.icns` 由 `swift tools/make_icon.swift` 生成，修改设计后重新运行即可。
+
 ## 调试
 
 ```bash
 build/NetBar.app/Contents/MacOS/NetBar --dump               # 在终端打印识别到的网络状态
 build/NetBar.app/Contents/MacOS/NetBar --snapshot out.png   # 把面板离屏渲染成 PNG
 build/NetBar.app/Contents/MacOS/NetBar --snapshot s.png --settings -language ja -settingsTab hotspot  # 渲染设置页（临时指定语言和标签页）
+build/NetBar.app/Contents/MacOS/NetBar --snapshot j.png --join [--enterprise] [--error]           # 渲染加入网络弹窗
 ```

@@ -122,6 +122,13 @@ enum L10n {
         "unmark_hotspot": ["Unmark Phone Hotspot", "取消手机热点标记", "取消手機熱點標記", "テザリングのマークを解除"],
         "disconnect": ["Disconnect", "断开连接", "中斷連線", "接続解除"],
         "copy_ssid": ["Copy Network Name", "拷贝网络名称", "拷貝網路名稱", "ネットワーク名をコピー"],
+        "show_password": ["Show password", "显示密码", "顯示密碼", "パスワードを表示"],
+        "username": ["Username", "用户名", "使用者名稱", "ユーザ名"],
+        "join_title_fmt": ["The Wi-Fi network “%@” requires a %@ password.", "Wi-Fi 网络“%@”需要 %@ 密码。", "Wi-Fi 網路「%@」需要 %@ 密碼。", "Wi-Fi ネットワーク“%@”には %@ パスワードが必要です。"],
+        "join_title_enterprise_fmt": ["The Wi-Fi network “%@” requires enterprise credentials.", "Wi-Fi 网络“%@”需要企业级凭据。", "Wi-Fi 網路「%@」需要企業級憑證。", "Wi-Fi ネットワーク“%@”にはエンタープライズの認証情報が必要です。"],
+        "joining": ["Joining…", "正在加入…", "正在加入⋯", "接続中…"],
+        "join_failed_fmt": ["Couldn’t join: %@", "无法加入：%@", "無法加入：%@", "接続できませんでした：%@"],
+        "saved_password_failed": ["The saved password didn’t work. Enter it again.", "已保存的密码无法加入，请重新输入。", "已儲存的密碼無法加入，請重新輸入。", "保存されたパスワードでは接続できませんでした。再入力してください。"],
         "password": ["Password", "密码", "密碼", "パスワード"],
         "join": ["Join", "加入", "加入", "接続"],
 

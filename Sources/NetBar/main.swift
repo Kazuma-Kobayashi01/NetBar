@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Combine
+import CoreWLAN
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
@@ -31,6 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
         updateButton()
         buildMainMenu()
+        NotificationCenter.default.publisher(for: .closePopover)
+            .sink { [weak self] _ in self?.popover.performClose(nil) }
+            .store(in: &cancellables)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .receive(on: DispatchQueue.main)
             .map { _ in AppLanguage.resolved }
@@ -149,6 +153,18 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
     m.scan()
     while Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
     m.refresh()
+    if CommandLine.arguments.contains("--join") {
+        let enterprise = CommandLine.arguments.contains("--enterprise")
+        let net = ScanNetwork(ssid: enterprise ? "eduroam" : "Home-5G", rssi: -50, secure: true,
+                              security: enterprise ? .wpa2Enterprise : .wpa2Personal, band: nil, known: false, network: CWNetwork())
+        let w = JoinDialog.debugWindow(for: net, model: m, error: CommandLine.arguments.contains("--error") ? L("join_failed_fmt", "Invalid password") : nil)
+        let v = w.contentView!.superview!
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds)!
+        v.cacheDisplay(in: v.bounds, to: rep)
+        try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+        exit(0)
+    }
     let host: NSView = CommandLine.arguments.contains("--settings")
         ? NSHostingView(rootView: SettingsView(model: m))
         : NSHostingView(rootView: PopoverView(model: m))

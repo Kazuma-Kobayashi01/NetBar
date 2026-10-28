@@ -254,19 +254,21 @@ final class NetworkModel: ObservableObject {
         }
     }
 
-    func connect(_ net: ScanNetwork, password: String?, completion: @escaping (Bool) -> Void) {
+    /// reportError 为 false 时由调用方（如加入弹窗）自己展示错误
+    func connect(_ net: ScanNetwork, username: String? = nil, password: String?, reportError: Bool = true,
+                 completion: @escaping (Error?) -> Void) {
         connectingSSID = net.ssid
         connectError = nil
         DispatchQueue.global(qos: .userInitiated).async { [wifiService] in
-            let result = Result { try wifiService.connect(net.network, password: password) }
+            let result = Result { try wifiService.connect(net.network, username: username, password: password) }
             DispatchQueue.main.async {
                 self.connectingSSID = nil
                 switch result {
                 case .success:
-                    completion(true)
+                    completion(nil)
                 case .failure(let e):
-                    self.connectError = L("connect_failed_fmt", net.ssid, e.localizedDescription)
-                    completion(false)
+                    if reportError { self.connectError = L("connect_failed_fmt", net.ssid, e.localizedDescription) }
+                    completion(e)
                 }
                 self.refresh()
             }

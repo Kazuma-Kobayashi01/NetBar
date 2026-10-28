@@ -266,8 +266,6 @@ private struct InterfacesView: View {
 
 private struct NearbyNetworksView: View {
     @ObservedObject var model: NetworkModel
-    @State private var passwordFor: String?
-    @State private var password = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -331,41 +329,20 @@ private struct NearbyNetworksView: View {
                 if isCurrent { Button(L("disconnect")) { model.disconnectWiFi() } }
                 Button(L("copy_ssid")) { copyToPasteboard(net.ssid) }
             }
-
-            if passwordFor == net.ssid {
-                HStack(spacing: 6) {
-                    SecureField(L("password"), text: $password)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { join(net) }
-                    Button(L("cancel")) { passwordFor = nil; password = "" }
-                    Button(L("join")) { join(net) }
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(password.isEmpty || model.connectingSSID != nil)
-                }
-                .controlSize(.small)
-                .padding(.leading, 36)
-                .padding(.trailing, 6)
-                .padding(.bottom, 4)
-            }
         }
     }
 
     private func tap(_ net: ScanNetwork, isCurrent: Bool) {
         guard !isCurrent, model.connectingSSID == nil else { return }
-        if !net.secure || net.known {
-            model.connect(net, password: nil) { ok in
-                if !ok && net.secure { model.connectError = nil; passwordFor = net.ssid }
+        if !net.secure {
+            model.connect(net, password: nil) { _ in }
+        } else if net.known && !net.isEnterprise {
+            // 已保存的网络先用系统钥匙串里的密码，失败再弹窗
+            model.connect(net, password: nil, reportError: false) { error in
+                if error != nil { JoinDialog.present(for: net, model: model, initialError: L("saved_password_failed")) }
             }
         } else {
-            password = ""
-            passwordFor = net.ssid
-        }
-    }
-
-    private func join(_ net: ScanNetwork) {
-        guard !password.isEmpty else { return }
-        model.connect(net, password: password) { ok in
-            if ok { passwordFor = nil; password = "" }
+            JoinDialog.present(for: net, model: model)
         }
     }
 }

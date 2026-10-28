@@ -38,9 +38,13 @@ struct ScanNetwork: Identifiable, Equatable {
     let ssid: String
     let rssi: Int
     let secure: Bool
+    let security: CWSecurity
     let band: String?
     let known: Bool
     let network: CWNetwork
+
+    var isEnterprise: Bool { WiFiService.enterpriseTypes.contains(security) }
+    var isWEP: Bool { security == .WEP }
 
     static func == (a: ScanNetwork, b: ScanNetwork) -> Bool {
         a.ssid == b.ssid && a.rssi == b.rssi && a.secure == b.secure && a.known == b.known
@@ -143,6 +147,7 @@ final class WiFiService: NSObject, CWEventDelegate, CLLocationManagerDelegate {
                 ssid: n.ssid!,
                 rssi: n.rssiValue,
                 secure: !n.supportsSecurity(.none),
+                security: Self.bestSecurity(n),
                 band: n.wlanChannel.map { Self.bandName($0.channelBand) } ?? nil,
                 known: known.contains(n.ssid!),
                 network: n
@@ -151,10 +156,24 @@ final class WiFiService: NSObject, CWEventDelegate, CLLocationManagerDelegate {
         .sorted { ($0.known ? 1 : 0, $0.rssi) > ($1.known ? 1 : 0, $1.rssi) }
     }
 
-    /// 阻塞调用，需在后台线程执行。password 为 nil 时使用系统已保存的凭据
-    func connect(_ network: CWNetwork, password: String?) throws {
+    /// 阻塞调用，需在后台线程执行。password 为 nil 时使用系统已保存的凭据；有 username 时按企业级网络加入
+    func connect(_ network: CWNetwork, username: String? = nil, password: String?) throws {
         guard let i = interface else { throw NSError(domain: "NetBar", code: 1, userInfo: [NSLocalizedDescriptionKey: L("no_wifi_card")]) }
-        try i.associate(to: network, password: password)
+        if let username {
+            try i.associate(toEnterpriseNetwork: network, identity: nil, username: username, password: password)
+        } else {
+            try i.associate(to: network, password: password)
+        }
+    }
+
+    static let enterpriseTypes: Set<CWSecurity> = [.wpa3Enterprise, .wpa2Enterprise, .wpaEnterpriseMixed, .wpaEnterprise, .enterprise, .dynamicWEP]
+
+    /// 网络支持的最强安全类型（用于弹窗文案和选择加入方式）
+    static func bestSecurity(_ n: CWNetwork) -> CWSecurity {
+        let order: [CWSecurity] = [.wpa3Enterprise, .wpa2Enterprise, .wpaEnterpriseMixed, .wpaEnterprise, .enterprise, .dynamicWEP,
+                                   .wpa3Transition, .wpa3Personal, .wpa2Personal, .wpaPersonalMixed, .wpaPersonal, .personal,
+                                   .WEP, .OWE, .oweTransition]
+        return order.first { n.supportsSecurity($0) } ?? .none
     }
 
     // MARK: 名称映射
