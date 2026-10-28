@@ -34,19 +34,19 @@ enum StatusIcon {
         return (img?.withSymbolConfiguration(cfg)) ?? NSImage()
     }
 
-    /// 有线：左侧网线插头 + 右侧 MacBook
+    /// 有线：左侧竖直网线插头 + 右侧 MacBook
     static func wiredImage(pointSize: CGFloat = 14) -> NSImage {
         let laptop = symbol("laptopcomputer", pointSize: pointSize)
-        let plug = symbol("cable.connector.horizontal", pointSize: pointSize * 0.85)
-        let gap: CGFloat = 1
-        let size = NSSize(width: plug.size.width + gap + laptop.size.width,
-                          height: max(plug.size.height, laptop.size.height))
+        let rawPlug = symbol("cable.connector", pointSize: pointSize)
+        // 插头缩放到比笔记本略高、垂直居中，整体宽度只比笔记本多一点
+        let plugH = laptop.size.height * 1.35
+        let plugW = rawPlug.size.width * plugH / max(rawPlug.size.height, 1)
+        let gap: CGFloat = 0  // 两个符号自带左右留白
+        let size = NSSize(width: plugW + gap + laptop.size.width, height: max(plugH, laptop.size.height))
         let img = NSImage(size: size, flipped: false) { _ in
             let ly = (size.height - laptop.size.height) / 2
-            laptop.draw(in: NSRect(x: plug.size.width + gap, y: ly, width: laptop.size.width, height: laptop.size.height))
-            // 插头与笔记本键盘底座大致齐平
-            let py = ly + laptop.size.height * 0.12
-            plug.draw(in: NSRect(x: 0, y: py, width: plug.size.width, height: plug.size.height))
+            laptop.draw(in: NSRect(x: plugW + gap, y: ly, width: laptop.size.width, height: laptop.size.height))
+            rawPlug.draw(in: NSRect(x: 0, y: (size.height - plugH) / 2, width: plugW, height: plugH))
             return true
         }
         img.isTemplate = true
