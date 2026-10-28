@@ -2,6 +2,7 @@ import Foundation
 import Network
 import Combine
 import ServiceManagement
+import CoreWLAN
 
 /// 菜单栏图标的三种形态（加上离线/关闭等状态）
 enum LinkState: Equatable {
@@ -107,7 +108,11 @@ final class NetworkModel: ObservableObject {
 
     // MARK: 刷新
 
+    /// 演示模式下不再读取真实网络状态（用于 README 截图）
+    private(set) var isDemo = false
+
     func refresh() {
+        if isDemo { return }
         let d = UserDefaults.standard
         let newInterfaces = InterfaceScanner.scan(includeHidden: d.bool(forKey: Prefs.showAllInterfaces))
         let newGlobal = InterfaceScanner.globalState()
@@ -306,5 +311,49 @@ final class NetworkModel: ObservableObject {
             }
             objectWillChange.send()
         }
+    }
+}
+
+// MARK: - 演示数据（README 截图用，不含任何真实网络信息）
+
+extension NetworkModel {
+    func loadDemoData(hotspot: Bool = false) {
+        isDemo = true
+        func iface(_ name: String, _ display: String, _ kind: InterfaceKind, _ ip: String, _ mac: String?) -> NetInterface {
+            var i = NetInterface(bsdName: name, displayName: display, kind: kind)
+            i.isUp = true; i.isRunning = true; i.ipv4 = [ip]; i.netmask = "255.255.255.0"; i.mac = mac; i.mtu = 1500
+            return i
+        }
+        let ssid = hotspot ? "Alex’s iPhone" : "Home-5G"
+        interfaces = [
+            iface("en0", "Wi-Fi", .wifi, hotspot ? "172.20.10.4" : "192.168.1.23", "a4:83:e7:12:34:56"),
+            iface("utun4", L("tunnel_name"), .tunnel, "198.18.0.1", nil),
+            iface("en7", "USB 10/100/1000 LAN", .ethernet, "10.0.0.42", "00:e0:4c:68:01:02"),
+        ]
+        global = GlobalNetState(primaryInterface: "en0", primaryRouter: hotspot ? "172.20.10.1" : "192.168.1.1",
+                                routers: ["en0": hotspot ? "172.20.10.1" : "192.168.1.1", "en7": "10.0.0.1"],
+                                dns: ["1.1.1.1", "8.8.8.8"])
+        wifi = WiFiInfo(interfaceName: "en0", powerOn: true, ssid: ssid, bssid: "3c:22:fb:aa:bb:cc",
+                        rssi: -48, noise: -92, txRate: 1201, channel: 149, band: "5 GHz", width: "80 MHz",
+                        security: WiFiService.securityName(.wpa3Personal), phyMode: WiFiService.phyName(.mode11ax),
+                        countryCode: "US", mac: "a4:83:e7:12:34:56")
+        rates = ["en0": (2_350_000, 184_000), "utun4": (2_310_000, 179_000), "en7": (0, 0)]
+        totals = ["en0": (8_400_000_000, 1_200_000_000), "utun4": (5_100_000_000, 900_000_000), "en7": (12_000_000, 3_000_000)]
+        locationAuthorized = true
+        locationUndetermined = false
+        hotspotSSIDs = []
+        notHotspotSSIDs = []
+        let nets: [(String, Int, CWSecurity, String, Bool)] = [
+            (ssid, -48, .wpa3Personal, "5 GHz", true),
+            (hotspot ? "Home-5G" : "Alex’s iPhone", -55, .wpa2Personal, "5 GHz", true),
+            ("Office", -63, .wpa2Enterprise, "5 GHz", false),
+            ("Coffee Shop", -70, .none, "2.4 GHz", false),
+            ("Neighbor-2.4G", -79, .wpa2Personal, "2.4 GHz", false),
+        ]
+        scanResults = nets.map { ScanNetwork(ssid: $0.0, rssi: $0.1, secure: $0.2 != .none, security: $0.2,
+                                             band: $0.3, known: $0.4, network: CWNetwork()) }
+        let (state, active) = computeLinkState()
+        linkState = state
+        activeInterface = active
     }
 }

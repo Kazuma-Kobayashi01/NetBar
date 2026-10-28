@@ -145,14 +145,28 @@ if CommandLine.arguments.contains("--dump") {
     exit(0)
 }
 
+/// 以 2x 像素密度把视图渲染为位图（README 截图需要清晰）
+func retinaSnapshot(_ v: NSView) -> NSBitmapImageRep {
+    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(v.bounds.width * 2), pixelsHigh: Int(v.bounds.height * 2),
+                               bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                               colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+    rep.size = v.bounds.size
+    v.cacheDisplay(in: v.bounds, to: rep)
+    return rep
+}
+
 // 调试：NetBar --snapshot out.png 把弹出面板离屏渲染成图片
 if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
     _ = NSApplication.shared
     let m = NetworkModel()
-    let deadline = Date().addingTimeInterval(4)
-    m.scan()
-    while Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
-    m.refresh()
+    if CommandLine.arguments.contains("--demo") {
+        m.loadDemoData(hotspot: CommandLine.arguments.contains("--hotspot"))
+    } else {
+        let deadline = Date().addingTimeInterval(4)
+        m.scan()
+        while Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
+        m.refresh()
+    }
     if CommandLine.arguments.contains("--join") {
         let enterprise = CommandLine.arguments.contains("--enterprise")
         let net = ScanNetwork(ssid: enterprise ? "eduroam" : "Home-5G", rssi: -50, secure: true,
@@ -160,8 +174,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
         let w = JoinDialog.debugWindow(for: net, model: m, error: CommandLine.arguments.contains("--error") ? L("join_failed_fmt", "Invalid password") : nil)
         let v = w.contentView!.superview!
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
-        let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds)!
-        v.cacheDisplay(in: v.bounds, to: rep)
+        let rep = retinaSnapshot(v)
         try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
         exit(0)
     }
@@ -176,8 +189,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
             }
         }.padding(10).background(Color.white))
         v.frame.size = v.fittingSize
-        let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds)!
-        v.cacheDisplay(in: v.bounds, to: rep)
+        let rep = retinaSnapshot(v)
         try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
         exit(0)
     }
@@ -191,8 +203,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
     win.contentView = host
     host.layoutSubtreeIfNeeded()
     RunLoop.main.run(until: Date().addingTimeInterval(0.5))
-    let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds)!
-    host.cacheDisplay(in: host.bounds, to: rep)
+    let rep = retinaSnapshot(host)
     try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
     let icons: [LinkState] = [.wifi(strength: 1), .wifi(strength: 0.5), .hotspot(strength: 0.75), .ethernet, .wifiOff, .offline]
     let strip = NSImage(size: NSSize(width: 40 * icons.count, height: 28), flipped: false) { _ in
