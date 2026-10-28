@@ -13,6 +13,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/NetBar"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp -R Resources/*.lproj "$APP/Contents/Resources/"
 codesign --force --deep --sign - "$APP"
 echo "Built $APP"
 

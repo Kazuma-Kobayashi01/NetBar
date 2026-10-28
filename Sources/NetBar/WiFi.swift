@@ -153,7 +153,7 @@ final class WiFiService: NSObject, CWEventDelegate, CLLocationManagerDelegate {
 
     /// 阻塞调用，需在后台线程执行。password 为 nil 时使用系统已保存的凭据
     func connect(_ network: CWNetwork, password: String?) throws {
-        guard let i = interface else { throw NSError(domain: "NetBar", code: 1, userInfo: [NSLocalizedDescriptionKey: "未找到 Wi-Fi 网卡"]) }
+        guard let i = interface else { throw NSError(domain: "NetBar", code: 1, userInfo: [NSLocalizedDescriptionKey: L("no_wifi_card")]) }
         try i.associate(to: network, password: password)
     }
 
@@ -187,30 +187,31 @@ final class WiFiService: NSObject, CWEventDelegate, CLLocationManagerDelegate {
         case .mode11ac: return "Wi-Fi 5 (802.11ac)"
         case .mode11ax: return "Wi-Fi 6 (802.11ax)"
         case .modeNone: return "—"
-        @unknown default: return m.rawValue == 7 ? "Wi-Fi 7 (802.11be)" : "未知"
+        @unknown default: return m.rawValue == 7 ? "Wi-Fi 7 (802.11be)" : L("unknown")
         }
     }
 
     static func securityName(_ s: CWSecurity) -> String {
+        let p = L("sec_personal"), e = L("sec_enterprise")
         switch s {
-        case .none: return "无（开放网络）"
+        case .none: return L("sec_open")
         case .WEP: return "WEP"
-        case .wpaPersonal: return "WPA 个人级"
-        case .wpaPersonalMixed: return "WPA/WPA2 个人级"
-        case .wpa2Personal: return "WPA2 个人级"
-        case .personal: return "个人级"
-        case .dynamicWEP: return "动态 WEP"
-        case .wpaEnterprise: return "WPA 企业级"
-        case .wpaEnterpriseMixed: return "WPA/WPA2 企业级"
-        case .wpa2Enterprise: return "WPA2 企业级"
-        case .enterprise: return "企业级"
-        case .wpa3Personal: return "WPA3 个人级"
-        case .wpa3Enterprise: return "WPA3 企业级"
-        case .wpa3Transition: return "WPA2/WPA3 个人级"
-        case .OWE: return "OWE 增强开放"
-        case .oweTransition: return "OWE 过渡"
-        case .unknown: return "未知"
-        @unknown default: return "未知"
+        case .wpaPersonal: return "WPA \(p)"
+        case .wpaPersonalMixed: return "WPA/WPA2 \(p)"
+        case .wpa2Personal: return "WPA2 \(p)"
+        case .personal: return p
+        case .dynamicWEP: return L("sec_dynamic_wep")
+        case .wpaEnterprise: return "WPA \(e)"
+        case .wpaEnterpriseMixed: return "WPA/WPA2 \(e)"
+        case .wpa2Enterprise: return "WPA2 \(e)"
+        case .enterprise: return e
+        case .wpa3Personal: return "WPA3 \(p)"
+        case .wpa3Enterprise: return "WPA3 \(e)"
+        case .wpa3Transition: return "WPA2/WPA3 \(p)"
+        case .OWE: return L("sec_owe")
+        case .oweTransition: return L("sec_owe_transition")
+        case .unknown: return L("unknown")
+        @unknown default: return L("unknown")
         }
     }
 }

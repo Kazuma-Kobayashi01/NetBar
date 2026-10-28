@@ -1,0 +1,2 @@
+"NSLocationUsageDescription" = "macOS requires Location access to read the current Wi-Fi name (SSID) and scan nearby networks. NetBar never reads or uploads your location.";
+"NSLocationWhenInUseUsageDescription" = "macOS requires Location access to read the current Wi-Fi name (SSID) and scan nearby networks. NetBar never reads or uploads your location.";

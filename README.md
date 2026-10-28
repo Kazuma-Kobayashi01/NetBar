@@ -14,7 +14,12 @@
 - **详细信息**：SSID、BSSID、RSSI / 噪声 / SNR、信道 / 频段 / 带宽、Wi-Fi 协议、协商速率、安全性、IPv4 / IPv6、子网掩码、路由器、DNS、MAC、MTU、实时速率、累计流量。点击任一行即可拷贝。
 - **连接 Wi-Fi**：扫描附近网络，点击即可连接（已保存的网络无需密码），也可以打开 / 关闭 Wi-Fi、断开连接。
 - **多网卡显示**：Wi-Fi、USB / 雷雳网卡、网桥，以及代理软件的 `utun`（Clash、Surge 等的 TUN 模式），并标出“默认路由”和“物理链路”。只有链路本地地址的系统 utun 默认隐藏。
-- 可选：菜单栏显示网速、显示网络名称、开机启动、手动查询公网 IP（开启代理时就是出口 IP）。
+- **设置窗口**（面板右下角齿轮，或 ⌘,）：
+  - 通用：界面语言、开机启动、刷新间隔、显示所有接口、定位权限状态，以及跳转到系统设置
+  - 菜单栏：显示网速 / 网络名称 / 代理圆点，并预览所有图标
+  - 手机热点：自动识别开关，以及管理已标记的热点和排除列表（可手动添加网络名）
+- **多语言**：English、简体中文、繁體中文、日本語。默认跟随系统，也可以在设置里切换，切换后立即生效。
+- 手动查询公网 IP（开启代理时就是出口 IP）。
 
 ## 构建与安装
 
@@ -35,4 +40,5 @@
 ```bash
 build/NetBar.app/Contents/MacOS/NetBar --dump               # 在终端打印识别到的网络状态
 build/NetBar.app/Contents/MacOS/NetBar --snapshot out.png   # 把面板离屏渲染成 PNG
+build/NetBar.app/Contents/MacOS/NetBar --snapshot s.png --settings -language ja -settingsTab hotspot  # 渲染设置页（临时指定语言和标签页）
 ```

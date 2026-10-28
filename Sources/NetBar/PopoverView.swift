@@ -3,6 +3,7 @@ import AppKit
 
 struct PopoverView: View {
     @ObservedObject var model: NetworkModel
+    @AppStorage(Prefs.language) private var language = AppLanguage.system.rawValue
     @State private var contentHeight: CGFloat = 300
 
     var body: some View {
@@ -28,6 +29,8 @@ struct PopoverView: View {
             FooterView(model: model)
         }
         .frame(width: 360)
+        // 切换语言时整体重建，让所有 L() 重新取值
+        .id(language)
     }
 }
 
@@ -43,10 +46,10 @@ private struct HeaderView: View {
 
     var body: some View {
         HStack {
-            Text("网络").font(.headline)
+            Text(L("network")).font(.headline)
             Spacer()
             if model.wifi != nil {
-                Text("Wi-Fi").font(.subheadline).foregroundStyle(.secondary)
+                Text(L("wifi")).font(.subheadline).foregroundStyle(.secondary)
                 Toggle("", isOn: Binding(get: { model.wifi?.powerOn ?? false },
                                          set: { model.setWiFiPower($0) }))
                     .toggleStyle(.switch)
@@ -67,7 +70,7 @@ private struct CurrentConnectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionTitle("当前连接")
+            SectionTitle(L("current_connection"))
             VStack(alignment: .leading, spacing: 10) {
                 Button { withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() } } label: {
                     HStack(spacing: 10) {
@@ -115,10 +118,10 @@ private struct CurrentConnectionView: View {
 
     private var title: String {
         switch model.linkState {
-        case .wifi, .hotspot: return model.wifi?.ssid ?? "已连接（需定位权限显示名称）"
-        case .ethernet: return activeIface?.displayName ?? "以太网"
-        case .wifiOff: return "Wi-Fi 已关闭"
-        case .offline: return "未连接"
+        case .wifi, .hotspot: return model.wifi?.ssid ?? L("connected_need_location")
+        case .ethernet: return activeIface?.displayName ?? L("ethernet")
+        case .wifiOff: return L("wifi_off")
+        case .offline: return L("not_connected")
         }
     }
 
@@ -126,13 +129,13 @@ private struct CurrentConnectionView: View {
         let ip = activeIface?.ipv4.first
         switch model.linkState {
         case .wifi, .hotspot:
-            let kind = model.isHotspot ? "手机热点" : "Wi-Fi"
+            let kind = model.isHotspot ? L("hotspot") : L("wifi")
             let parts = [kind, model.wifi?.band, model.wifi.map { "\($0.rssi) dBm" }, ip].compactMap { $0 }
             return parts.joined(separator: " · ")
         case .ethernet:
-            return ["有线", model.activeInterface, ip].compactMap { $0 }.joined(separator: " · ")
-        case .wifiOff: return "打开 Wi-Fi 或插入网线以联网"
-        case .offline: return "没有可用的网络连接"
+            return [L("wired"), model.activeInterface, ip].compactMap { $0 }.joined(separator: " · ")
+        case .wifiOff: return L("wifi_off_hint")
+        case .offline: return L("offline_hint")
         }
     }
 
@@ -140,27 +143,27 @@ private struct CurrentConnectionView: View {
         let iface = activeIface
         VStack(spacing: 0) {
             if isWiFiActive, let w = model.wifi {
-                InfoRow("网络名称", w.ssid ?? "—")
+                InfoRow(L("ssid_label"), w.ssid ?? "—")
                 InfoRow("BSSID", w.bssid ?? "—")
-                InfoRow("信号 / 噪声", "\(w.rssi) dBm / \(w.noise) dBm（SNR \(w.rssi - w.noise) dB）")
-                InfoRow("信道", [w.channel.map(String.init), w.band, w.width].compactMap { $0 }.joined(separator: " · "))
-                InfoRow("协议", w.phyMode)
-                InfoRow("协商速率", "\(Int(w.txRate)) Mbps")
-                InfoRow("安全性", w.security)
-                if let cc = w.countryCode { InfoRow("国家码", cc) }
+                InfoRow(L("signal_noise"), "\(w.rssi) dBm / \(w.noise) dBm (SNR \(w.rssi - w.noise) dB)")
+                InfoRow(L("channel"), [w.channel.map(String.init), w.band, w.width].compactMap { $0 }.joined(separator: " · "))
+                InfoRow(L("protocol"), w.phyMode)
+                InfoRow(L("tx_rate"), "\(Int(w.txRate)) Mbps")
+                InfoRow(L("security"), w.security)
+                if let cc = w.countryCode { InfoRow(L("country"), cc) }
             }
             if let iface {
-                InfoRow("接口", "\(iface.displayName)（\(iface.bsdName)）")
+                InfoRow(L("interface"), "\(iface.displayName) (\(iface.bsdName))")
                 InfoRow("IPv4", iface.ipv4.joined(separator: "\n").nonEmpty ?? "—")
-                if let m = iface.netmask { InfoRow("子网掩码", m) }
-                InfoRow("路由器", model.global.routers[iface.bsdName] ?? "—")
+                if let m = iface.netmask { InfoRow(L("netmask"), m) }
+                InfoRow(L("router"), model.global.routers[iface.bsdName] ?? "—")
                 if !iface.ipv6.isEmpty { InfoRow("IPv6", iface.ipv6.joined(separator: "\n")) }
-                if let mac = iface.mac { InfoRow("MAC 地址", mac) }
+                if let mac = iface.mac { InfoRow(L("mac"), mac) }
                 if let mtu = iface.mtu { InfoRow("MTU", "\(mtu)") }
             }
             if !model.global.dns.isEmpty { InfoRow("DNS", model.global.dns.joined(separator: "\n")) }
             if let p = model.global.primaryInterface {
-                InfoRow("默认路由", p + (InterfaceScanner.isTunnel(p) ? "（经代理/VPN）" : ""))
+                InfoRow(L("default_route"), p + (InterfaceScanner.isTunnel(p) ? L("via_tunnel") : ""))
             }
         }
     }
@@ -172,15 +175,15 @@ private struct HotspotToggle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Toggle(isOn: Binding(get: { model.isHotspot }, set: { model.setCurrentIsHotspot($0) })) {
-                Label("这是手机热点", systemImage: "cellularbars").font(.callout)
+                Label(L("this_is_hotspot"), systemImage: "cellularbars").font(.callout)
             }
             .toggleStyle(.switch)
             .controlSize(.mini)
             .disabled(model.wifi?.ssid == nil)
             if model.wifi?.ssid == nil {
-                Text("需要定位权限读取 Wi-Fi 名称后才能标记").font(.caption2).foregroundStyle(.secondary)
+                Text(L("hotspot_need_ssid")).font(.caption2).foregroundStyle(.secondary)
             } else if let why = model.hotspotAutoReason, !model.hotspotSSIDs.contains(model.wifi?.ssid ?? ""), model.isHotspot {
-                Text("已自动识别：\(why)").font(.caption2).foregroundStyle(.secondary)
+                Text(L("hotspot_auto_fmt", why)).font(.caption2).foregroundStyle(.secondary)
             }
         }
     }
@@ -194,7 +197,7 @@ private struct InterfacesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionTitle("网络接口")
+            SectionTitle(L("interfaces"))
             VStack(spacing: 2) {
                 ForEach(model.interfaces) { iface in
                     row(iface)
@@ -222,10 +225,10 @@ private struct InterfacesView: View {
                         HStack(spacing: 4) {
                             Text(iface.displayName).font(.callout).lineLimit(1)
                             Text(iface.bsdName).font(.caption2).foregroundStyle(.secondary)
-                            if iface.bsdName == model.global.primaryInterface { Badge("默认路由", .blue) }
-                            if iface.bsdName == model.activeInterface && iface.bsdName != model.global.primaryInterface { Badge("物理链路", .green) }
+                            if iface.bsdName == model.global.primaryInterface { Badge(L("default_route"), .blue) }
+                            if iface.bsdName == model.activeInterface && iface.bsdName != model.global.primaryInterface { Badge(L("badge_physical"), .green) }
                         }
-                        Text(iface.ipv4.first ?? iface.ipv6.first ?? (iface.isRunning ? "无 IP 地址" : "未连接"))
+                        Text(iface.ipv4.first ?? iface.ipv6.first ?? (iface.isRunning ? L("no_ip") : L("not_connected")))
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -241,15 +244,15 @@ private struct InterfacesView: View {
 
             if isOpen {
                 VStack(spacing: 0) {
-                    InfoRow("状态", iface.isUp ? (iface.isRunning ? "已启用 · 运行中" : "已启用") : "已停用")
+                    InfoRow(L("status"), iface.isUp ? (iface.isRunning ? L("status_up_running") : L("status_up")) : L("status_down"))
                     if !iface.ipv4.isEmpty { InfoRow("IPv4", iface.ipv4.joined(separator: "\n")) }
-                    if let m = iface.netmask { InfoRow("子网掩码", m) }
-                    if let r = model.global.routers[iface.bsdName] { InfoRow("路由器", r) }
+                    if let m = iface.netmask { InfoRow(L("netmask"), m) }
+                    if let r = model.global.routers[iface.bsdName] { InfoRow(L("router"), r) }
                     if !iface.ipv6.isEmpty { InfoRow("IPv6", iface.ipv6.joined(separator: "\n")) }
-                    if !iface.linkLocalIPv6.isEmpty { InfoRow("链路本地", iface.linkLocalIPv6.joined(separator: "\n")) }
-                    if let mac = iface.mac { InfoRow("MAC 地址", mac) }
+                    if !iface.linkLocalIPv6.isEmpty { InfoRow(L("link_local"), iface.linkLocalIPv6.joined(separator: "\n")) }
+                    if let mac = iface.mac { InfoRow(L("mac"), mac) }
                     if let mtu = iface.mtu { InfoRow("MTU", "\(mtu)") }
-                    if let total { InfoRow("累计流量", "↓ \(Format.bytes(total.rx))   ↑ \(Format.bytes(total.tx))") }
+                    if let total { InfoRow(L("total_traffic"), "↓ \(Format.bytes(total.rx))   ↑ \(Format.bytes(total.tx))") }
                 }
                 .padding(.leading, 36)
                 .padding(.trailing, 6)
@@ -269,23 +272,23 @@ private struct NearbyNetworksView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                SectionTitle("附近的 Wi-Fi")
+                SectionTitle(L("nearby"))
                 Spacer()
                 if model.scanning {
                     ProgressView().controlSize(.mini)
                 } else {
                     Button { model.scan() } label: { Image(systemName: "arrow.clockwise") }
                         .buttonStyle(.borderless)
-                        .help("重新扫描")
+                        .help(L("rescan"))
                         .disabled(model.wifi?.powerOn != true)
                 }
             }
             if model.wifi?.powerOn != true {
-                Placeholder("Wi-Fi 已关闭")
+                Placeholder(L("wifi_off"))
             } else if let e = model.scanError {
-                Placeholder("扫描失败：\(e)")
+                Placeholder(L("scan_failed_fmt", e))
             } else if model.scanResults.isEmpty {
-                Placeholder(model.scanning ? "正在扫描…" : (model.locationAuthorized ? "未发现网络" : "需要定位权限才能显示网络名称"))
+                Placeholder(model.scanning ? L("scanning") : (model.locationAuthorized ? L("no_networks") : L("need_location_list")))
             } else {
                 VStack(spacing: 2) {
                     ForEach(model.scanResults) { net in
@@ -319,23 +322,23 @@ private struct NearbyNetworksView: View {
             .buttonStyle(HoverButtonStyle())
             .contextMenu {
                 if model.hotspotSSIDs.contains(net.ssid) {
-                    Button("取消手机热点标记") { model.hotspotSSIDs.remove(net.ssid) }
+                    Button(L("unmark_hotspot")) { model.hotspotSSIDs.remove(net.ssid) }
                 } else {
-                    Button("标记为手机热点") {
+                    Button(L("mark_hotspot")) {
                         model.hotspotSSIDs.insert(net.ssid); model.notHotspotSSIDs.remove(net.ssid)
                     }
                 }
-                if isCurrent { Button("断开连接") { model.disconnectWiFi() } }
-                Button("拷贝网络名称") { copy(net.ssid) }
+                if isCurrent { Button(L("disconnect")) { model.disconnectWiFi() } }
+                Button(L("copy_ssid")) { copyToPasteboard(net.ssid) }
             }
 
             if passwordFor == net.ssid {
                 HStack(spacing: 6) {
-                    SecureField("密码", text: $password)
+                    SecureField(L("password"), text: $password)
                         .textFieldStyle(.roundedBorder)
                         .onSubmit { join(net) }
-                    Button("取消") { passwordFor = nil; password = "" }
-                    Button("加入") { join(net) }
+                    Button(L("cancel")) { passwordFor = nil; password = "" }
+                    Button(L("join")) { join(net) }
                         .keyboardShortcut(.defaultAction)
                         .disabled(password.isEmpty || model.connectingSSID != nil)
                 }
@@ -371,55 +374,40 @@ private struct NearbyNetworksView: View {
 
 private struct FooterView: View {
     @ObservedObject var model: NetworkModel
-    @AppStorage(Prefs.showSpeed) private var showSpeed = false
-    @AppStorage(Prefs.showName) private var showName = false
-    @AppStorage(Prefs.showTunnelBadge) private var showTunnelBadge = true
-    @AppStorage(Prefs.showAllInterfaces) private var showAll = false
-    @AppStorage(Prefs.autoDetectHotspot) private var autoHotspot = true
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Button {
                 model.fetchPublicIP()
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "globe")
                     if model.fetchingPublicIP {
-                        Text("查询中…")
+                        Text(L("querying"))
                     } else {
-                        Text(model.publicIP.map { "公网 IP：\($0)" } ?? "查询公网 IP")
+                        Text(model.publicIP.map { L("public_ip_fmt", $0) } ?? L("query_public_ip"))
                             .lineLimit(1)
                     }
                 }
                 .font(.caption)
             }
             .buttonStyle(.borderless)
-            .help("通过 api.ipify.org 查询出口 IP（开启代理时即为代理出口）；右键拷贝")
-            .contextMenu { if let ip = model.publicIP { Button("拷贝") { copy(ip) } } }
+            .help(L("public_ip_help"))
+            .contextMenu { if let ip = model.publicIP { Button(L("copy")) { copyToPasteboard(ip) } } }
 
             Spacer()
 
-            Menu {
-                Toggle("菜单栏显示网速", isOn: $showSpeed)
-                Toggle("菜单栏显示网络名称", isOn: $showName)
-                Toggle("代理 / VPN 启用时图标显示圆点", isOn: $showTunnelBadge)
-                Toggle("显示所有网络接口", isOn: $showAll)
-                Toggle("自动识别手机热点", isOn: $autoHotspot)
-                Toggle("开机启动", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
-                Divider()
-                Button("网络设置…") { openURL("x-apple.systempreferences:com.apple.Network-Settings.extension") }
-                Button("隐藏系统自带 Wi-Fi 图标…") { openURL("x-apple.systempreferences:com.apple.ControlCenter-Settings.extension") }
-                if !model.locationAuthorized {
-                    Button("定位权限设置…") { openURL("x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") }
-                }
-                Divider()
-                Button("退出 NetBar") { NSApp.terminate(nil) }
-            } label: {
+            Button { SettingsWindowController.shared.show(model: model) } label: {
                 Image(systemName: "gearshape")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+            .buttonStyle(.borderless)
+            .help(L("settings_ellipsis") + "  ⌘,")
+
+            Button { NSApp.terminate(nil) } label: {
+                Image(systemName: "power")
+            }
+            .buttonStyle(.borderless)
+            .help(L("quit"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -435,14 +423,14 @@ private struct LocationBanner: View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "location.slash").foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 4) {
-                Text("macOS 需要定位权限才能读取 Wi-Fi 名称和扫描网络。NetBar 不会使用你的位置。")
+                Text(L("location_banner"))
                     .font(.caption)
                     .fixedSize(horizontal: false, vertical: true)
-                Button(model.locationUndetermined ? "授权" : "打开定位权限设置") {
+                Button(model.locationUndetermined ? L("authorize") : L("open_location_settings")) {
                     if model.locationUndetermined {
                         model.requestLocation()
                     } else {
-                        openURL("x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")
+                        openSystemURL(SystemURL.location)
                     }
                 }
                 .controlSize(.small)
@@ -553,8 +541,8 @@ private struct InfoRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
-            Text(copied ? "已拷贝" : value)
+            Text(label).foregroundStyle(.secondary).frame(width: 80, alignment: .leading)
+            Text(copied ? L("copied") : value)
                 .foregroundStyle(copied ? Color.accentColor : .primary)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -564,11 +552,11 @@ private struct InfoRow: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard value != "—" else { return }
-            copy(value)
+            copyToPasteboard(value)
             copied = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { copied = false }
         }
-        .help("点击拷贝")
+        .help(L("click_to_copy"))
     }
 }
 
@@ -589,12 +577,18 @@ private struct HoverButtonStyle: ButtonStyle {
     }
 }
 
-private func copy(_ s: String) {
+enum SystemURL {
+    static let location = "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices"
+    static let network = "x-apple.systempreferences:com.apple.Network-Settings.extension"
+    static let controlCenter = "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension"
+}
+
+func copyToPasteboard(_ s: String) {
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(s, forType: .string)
 }
 
-private func openURL(_ s: String) {
+func openSystemURL(_ s: String) {
     if let url = URL(string: s) { NSWorkspace.shared.open(url) }
 }
 

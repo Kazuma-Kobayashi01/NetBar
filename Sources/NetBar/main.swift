@@ -30,6 +30,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] _ in self?.updateButton() }
             .store(in: &cancellables)
         updateButton()
+        buildMainMenu()
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .map { _ in AppLanguage.resolved }
+            .removeDuplicates()
+            .sink { [weak self] _ in self?.buildMainMenu() }
+            .store(in: &cancellables)
+    }
+
+    /// 菜单栏应用没有可见的主菜单，但 ⌘, / ⌘Q / ⌘W 和编辑快捷键（粘贴密码等）仍然通过它分发
+    private func buildMainMenu() {
+        let main = NSMenu()
+
+        let appItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: L("settings_ellipsis"), action: #selector(openSettings), keyEquivalent: ",").target = self
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: L("menu_close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        appMenu.addItem(withTitle: L("quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = appMenu
+        main.addItem(appItem)
+
+        let editItem = NSMenuItem()
+        let editMenu = NSMenu(title: L("menu_edit"))
+        editMenu.addItem(withTitle: L("menu_cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: L("copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: L("menu_paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: L("menu_select_all"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = editMenu
+        main.addItem(editItem)
+
+        NSApp.mainMenu = main
+    }
+
+    @objc func openSettings() {
+        popover.performClose(nil)
+        SettingsWindowController.shared.show(model: model)
     }
 
     private func updateButton() {
@@ -42,7 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if d.bool(forKey: Prefs.showName) {
             switch model.linkState {
             case .wifi, .hotspot: if let s = model.wifi?.ssid { parts.append(s) }
-            case .ethernet: parts.append("有线")
+            case .ethernet: parts.append(L("wired"))
             default: break
             }
         }
@@ -62,11 +99,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func tooltip() -> String {
         switch model.linkState {
-        case .wifi: return "Wi-Fi：\(model.wifi?.ssid ?? "已连接")"
-        case .hotspot: return "手机热点：\(model.wifi?.ssid ?? "已连接")"
-        case .ethernet: return "有线网络"
-        case .wifiOff: return "Wi-Fi 已关闭"
-        case .offline: return "未连接网络"
+        case .wifi: return L("tip_wifi_fmt", model.wifi?.ssid ?? L("connected"))
+        case .hotspot: return L("tip_hotspot_fmt", model.wifi?.ssid ?? L("connected"))
+        case .ethernet: return L("tip_ethernet")
+        case .wifiOff: return L("wifi_off")
+        case .offline: return L("tip_offline")
         }
     }
 
@@ -112,7 +149,9 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
     m.scan()
     while Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
     m.refresh()
-    let host = NSHostingView(rootView: PopoverView(model: m))
+    let host: NSView = CommandLine.arguments.contains("--settings")
+        ? NSHostingView(rootView: SettingsView(model: m))
+        : NSHostingView(rootView: PopoverView(model: m))
     let size = host.fittingSize
     let win = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: .borderless, backing: .buffered, defer: false)
     win.appearance = NSAppearance(named: CommandLine.arguments.contains("--dark") ? .darkAqua : .aqua)

@@ -1,0 +1,2 @@
+"NSLocationUsageDescription" = "macOS では、現在の Wi-Fi 名（SSID）の取得と近くのネットワークのスキャンに位置情報の許可が必要です。NetBar が位置情報を取得・送信することはありません。";
+"NSLocationWhenInUseUsageDescription" = "macOS では、現在の Wi-Fi 名（SSID）の取得と近くのネットワークのスキャンに位置情報の許可が必要です。NetBar が位置情報を取得・送信することはありません。";

@@ -20,6 +20,8 @@ enum Prefs {
     static let showTunnelBadge = "showTunnelBadge"
     static let hotspotSSIDs = "hotspotSSIDs"
     static let notHotspotSSIDs = "notHotspotSSIDs"
+    static let language = "language"
+    static let refreshInterval = "refreshInterval"
 
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
@@ -28,12 +30,14 @@ enum Prefs {
             showAllInterfaces: false,
             autoDetectHotspot: true,
             showTunnelBadge: true,
+            language: AppLanguage.system.rawValue,
+            refreshInterval: 2.0,
         ])
     }
 }
 
 /// iPhone 个人热点固定使用 172.20.10.0/28 网段，网关为 172.20.10.1；192.168.43.1 是多数安卓热点的默认网关
-private let hotspotRouters: [String: String] = ["172.20.10.1": "iPhone 热点网关", "192.168.43.1": "安卓热点网关"]
+private let hotspotRouters: [String: String] = ["172.20.10.1": "iphone_gateway", "192.168.43.1": "android_gateway"]
 /// 手机热点默认名称里常见的关键词
 private let hotspotNameKeywords = ["iphone", "ipad", "galaxy", "android", "redmi", "xiaomi", "huawei", "honor", "oppo", "vivo", "oneplus", "pixel", "realme", "iqoo", "meizu", "nova", "mate"]
 
@@ -79,12 +83,22 @@ final class NetworkModel: ObservableObject {
         pathMonitor.start(queue: .global(qos: .utility))
         defaultsObserver = NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.refresh() }
+            .sink { [weak self] _ in
+                self?.rescheduleTimer()
+                self?.refresh()
+            }
 
         if wifiService.locationUndetermined { wifiService.requestLocation() }
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.refresh() }
-        timer?.tolerance = 0.3
+        rescheduleTimer()
+    }
+
+    private func rescheduleTimer() {
+        let interval = max(UserDefaults.standard.double(forKey: Prefs.refreshInterval), 1)
+        if let t = timer, t.isValid, t.timeInterval == interval { return }
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in self?.refresh() }
+        timer?.tolerance = interval * 0.15
     }
 
     private func save(_ set: Set<String>, _ key: String) {
@@ -169,10 +183,10 @@ final class NetworkModel: ObservableObject {
     /// 自动识别依据（nil 表示未识别为热点）
     var hotspotAutoReason: String? {
         guard UserDefaults.standard.bool(forKey: Prefs.autoDetectHotspot) else { return nil }
-        if let r = wifiRouter, let why = hotspotRouters[r] { return "网关 \(r)（\(why)）" }
+        if let r = wifiRouter, let why = hotspotRouters[r] { return L("reason_router_fmt", r, L(why)) }
         if let ssid = wifi?.ssid?.lowercased(),
            let k = hotspotNameKeywords.first(where: { ssid.contains($0) }) {
-            return "网络名称包含 “\(k)”"
+            return L("reason_name_fmt", k)
         }
         return nil
     }
@@ -251,7 +265,7 @@ final class NetworkModel: ObservableObject {
                 case .success:
                     completion(true)
                 case .failure(let e):
-                    self.connectError = "连接“\(net.ssid)”失败：\(e.localizedDescription)"
+                    self.connectError = L("connect_failed_fmt", net.ssid, e.localizedDescription)
                     completion(false)
                 }
                 self.refresh()
@@ -272,7 +286,7 @@ final class NetworkModel: ObservableObject {
                 if let data, let s = String(data: data, encoding: .utf8), !s.isEmpty {
                     self.publicIP = s.trimmingCharacters(in: .whitespacesAndNewlines)
                 } else {
-                    self.publicIP = "查询失败" + (error.map { "：\($0.localizedDescription)" } ?? "")
+                    self.publicIP = L("query_failed") + (error.map { ": \($0.localizedDescription)" } ?? "")
                 }
             }
         }.resume()
@@ -286,7 +300,7 @@ final class NetworkModel: ObservableObject {
             do {
                 if newValue { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             } catch {
-                connectError = "设置开机启动失败：\(error.localizedDescription)（请先把 NetBar 放到“应用程序”文件夹）"
+                connectError = L("login_failed_fmt", error.localizedDescription)
             }
             objectWillChange.send()
         }

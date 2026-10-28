@@ -1,0 +1,2 @@
+"NSLocationUsageDescription" = "macOS 要求获得定位权限后，才能读取当前 Wi-Fi 名称（SSID）并扫描附近网络。NetBar 不会获取或上传你的位置。";
+"NSLocationWhenInUseUsageDescription" = "macOS 要求获得定位权限后，才能读取当前 Wi-Fi 名称（SSID）并扫描附近网络。NetBar 不会获取或上传你的位置。";

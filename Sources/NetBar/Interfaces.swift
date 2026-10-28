@@ -96,7 +96,7 @@ enum InterfaceScanner {
                     kind = .other
                 }
                 var display = sc?.name ?? name
-                if kind == .tunnel { display = "VPN / 代理隧道" }
+                if kind == .tunnel { display = L("tunnel_name") }
                 dict[name] = NetInterface(bsdName: name, displayName: display, kind: kind)
                 order.append(name)
             }
