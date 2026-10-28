@@ -165,6 +165,22 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
         try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
         exit(0)
     }
+    if CommandLine.arguments.contains("--link-icons") {
+        let states: [LinkState] = [.wifi(strength: 1), .ethernet, .hotspot(strength: 1), .wifiOff, .offline]
+        let v = NSHostingView(rootView: HStack(spacing: 12) {
+            ForEach(Array(states.enumerated()), id: \.offset) { _, st in
+                LinkIcon(state: st, size: 22)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(Color.accentColor))
+                    .foregroundStyle(Color.white)
+            }
+        }.padding(10).background(Color.white))
+        v.frame.size = v.fittingSize
+        let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds)!
+        v.cacheDisplay(in: v.bounds, to: rep)
+        try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+        exit(0)
+    }
     let host: NSView = CommandLine.arguments.contains("--settings")
         ? NSHostingView(rootView: SettingsView(model: m))
         : NSHostingView(rootView: PopoverView(model: m))

@@ -31,7 +31,7 @@ enum StatusIcon {
         } else {
             img = NSImage(systemSymbolName: name, accessibilityDescription: name)
         }
-        return (img?.withSymbolConfiguration(cfg)) ?? NSImage()
+        return (img?.withSymbolConfiguration(cfg.applying(.preferringMonochrome()))) ?? NSImage()
     }
 
     /// 有线：左侧竖直网线插头 + 右侧 MacBook

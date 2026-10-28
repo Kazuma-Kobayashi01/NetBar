@@ -445,7 +445,11 @@ struct LinkIcon: View {
         switch state {
         case .wifi(let s): Image(systemName: "wifi", variableValue: s).font(.system(size: size, weight: .medium))
         case .hotspot(let s): Image(systemName: "cellularbars", variableValue: s).font(.system(size: size, weight: .medium))
-        case .ethernet: Image(nsImage: StatusIcon.wiredImage(pointSize: size)).renderingMode(.template)
+        case .ethernet:
+            // 组合图标比单个符号宽，按比例缩进圆形 / 行内的可用空间
+            Image(nsImage: StatusIcon.wiredImage(pointSize: size)).renderingMode(.template)
+                .resizable().aspectRatio(contentMode: .fit)
+                .frame(width: size * 1.35, height: size * 1.35)
         case .wifiOff: Image(systemName: "wifi.slash").font(.system(size: size, weight: .medium))
         case .offline: Image(systemName: "wifi.exclamationmark").font(.system(size: size, weight: .medium))
         }
@@ -457,7 +461,9 @@ private struct KindIcon: View {
 
     var body: some View {
         if kind == .ethernet {
-            Image(nsImage: StatusIcon.wiredImage(pointSize: 12)).renderingMode(.template)
+            Image(nsImage: StatusIcon.wiredImage(pointSize: 13)).renderingMode(.template)
+                .resizable().aspectRatio(contentMode: .fit)
+                .frame(width: 21, height: 16)
         } else {
             Image(systemName: kind.symbol).font(.system(size: 13))
         }
